@@ -1,8 +1,8 @@
 name: Earthquake Alert
 on:
   schedule:
-    - cron: '*/15 * * * *' # Every 15 minutes
-  workflow_dispatch: # Allow manual runs
+    - cron: '*/15 * * * *'  # Every 15 minutes
+  workflow_dispatch:         # Allow manual runs
 
 jobs:
   check:
@@ -15,17 +15,15 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
+          cache: 'npm'       # Faster installs
 
       - name: Install dependencies
-        run: npm install
-
-      - name: Configure Firebase
-        run: |
-          echo "${{ secrets.FIREBASE_CONFIG_BASE64 }}" | base64 --decode > firebase-admin-key.json
-          echo "FIREBASE_CONFIG=$(cat firebase-admin-key.json)" >> $GITHUB_ENV
+        run: npm ci          # Clean install for CI
 
       - name: Run earthquake check
         run: node check-earthquakes.js
         env:
           GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
-          FIREBASE_CONFIG: ${{ env.FIREBASE_CONFIG }}
+          FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
+          FIREBASE_CLIENT_EMAIL: ${{ secrets.FIREBASE_CLIENT_EMAIL }}
+          FIREBASE_PRIVATE_KEY: ${{ secrets.FIREBASE_PRIVATE_KEY }}
