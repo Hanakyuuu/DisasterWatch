@@ -1,5 +1,4 @@
 {
-<<<<<<< HEAD
   "cron": [
     {
       "path": "/api/check-earthquakes",
@@ -7,12 +6,3 @@
     }
   ]
 }
-=======
-  "crons": [
-    {
-      "path": "/api/check-earthquakes",
-      "schedule": "0 */6 * * *" 
-    }
-  ]
-}
->>>>>>> bef2a965ce4c82daab4d16be15a79a926ee8ea15
