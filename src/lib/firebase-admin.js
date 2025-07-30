@@ -1,5 +1,5 @@
-const { initializeApp, cert } = require('firebase-admin/app');
-const { getFirestore } = require('firebase-admin/firestore');
+const { db } = require('./firebase-admin');  // Changed this line
+const nodemailer = require('nodemailer');
 
 // Add null checks for environment variables
 const firebaseConfig = {
