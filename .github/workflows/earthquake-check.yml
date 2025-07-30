@@ -1,0 +1,31 @@
+name: Earthquake Alert
+on:
+  schedule:
+    - cron: '*/15 * * * *' # Every 15 minutes
+  workflow_dispatch: # Allow manual runs
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Configure Firebase
+        run: |
+          echo "${{ secrets.FIREBASE_CONFIG_BASE64 }}" | base64 --decode > firebase-admin-key.json
+          echo "FIREBASE_CONFIG=$(cat firebase-admin-key.json)" >> $GITHUB_ENV
+
+      - name: Run earthquake check
+        run: node check-earthquakes.js
+        env:
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+          FIREBASE_CONFIG: ${{ env.FIREBASE_CONFIG }}
