@@ -44,7 +44,10 @@
     "axios": "^1.11.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+<<<<<<< HEAD
     "cron": "^4.3.2",
+=======
+>>>>>>> bef2a965ce4c82daab4d16be15a79a926ee8ea15
     "date-fns": "^3.6.0",
     "dotenv": "^16.5.0",
     "embla-carousel-react": "^8.6.0",
