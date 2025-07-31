@@ -51,7 +51,7 @@ async function checkEarthquakes() {
     
     // Get quakes from last 15 mins
     const now = new Date();
-    const past = new Date(now.getTime() - 15 * 60 * 1000);
+    const past = new Date(now.getTime() - 30 * 60 * 1000);
     const url = `https://earthquake.usgs.gov/fdsnws/event/1/query?format=geojson&starttime=${past.toISOString()}&endtime=${now.toISOString()}&minmagnitude=3`;
     
     const response = await fetch(url);
