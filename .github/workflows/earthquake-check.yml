@@ -22,6 +22,7 @@ jobs:
           
       - name: Run earthquake check
         run: node check-earthquakes.js
+        working-directory: ./src/lib
         env:
           GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
           FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}

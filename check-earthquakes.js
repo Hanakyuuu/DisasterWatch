@@ -1,15 +1,20 @@
-const { initializeApp, cert } = require('firebase-admin/app');
-const { getFirestore } = require('firebase-admin/firestore');
-const nodemailer = require('nodemailer');
+import 'dotenv/config';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import { db } from '../DisasterWatch/src/lib/firebase-admin.js';
+import nodemailer from 'nodemailer';
 
-// Initialize Firebase
-const app = initializeApp({
-  credential: cert(JSON.parse(process.env.FIREBASE_CONFIG))
-});
-const firestore = getFirestore(app);
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+
 
 async function checkEarthquakes() {
   try {
+    console.log('Environment:', {
+  projectId: !!process.env.FIREBASE_PROJECT_ID,
+  clientEmail: !!process.env.FIREBASE_CLIENT_EMAIL,
+  privateKey: !!process.env.FIREBASE_PRIVATE_KEY
+});
     console.log('Checking earthquakes at', new Date().toISOString());
     
     // Get quakes from last 15 mins
@@ -21,7 +26,7 @@ async function checkEarthquakes() {
     const { features: quakes } = await response.json();
 
     // Get users with notifications enabled
-    const usersSnapshot = await firestore.collection('user')
+    const usersSnapshot = await db.collection('user')
       .where('notificationEnabled', '==', true)
       .get();
 
