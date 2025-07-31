@@ -49,12 +49,14 @@ async function checkEarthquakes() {
   try {
     console.log('Checking earthquakes at', new Date().toISOString());
     
-    // Get quakes from last 15 mins
+    // Extended time window to 45 minutes
     const now = new Date();
-    const past = new Date(now.getTime() - 45 * 60 * 1000);
-    const url = `https://earthquake.usgs.gov/fdsnws/event/1/query?format=geojson&starttime=${past.toISOString()}&endtime=${now.toISOString()}&minmagnitude=3`;
+    const past = new Date(now.getTime() - 15 * 60 * 1000);
+    const url = `https://earthquake.usgs.gov/fdsnws/event/1/query?format=geojson&starttime=${past.toISOString()}&endtime=${now.toISOString()}&minmagnitude=1`;
     
+    console.log('Fetching earthquake data from:', url);
     const response = await fetch(url);
+    
     if (!response.ok) {
       throw new Error(`Failed to fetch earthquakes: ${response.status} ${response.statusText}`);
     }
@@ -63,7 +65,10 @@ async function checkEarthquakes() {
     if (!data || !data.features) {
       throw new Error('Invalid earthquake data received');
     }
+    
     const quakes = data.features;
+    console.log(`Found ${quakes.length} earthquakes in time period`);
+    quakes.forEach(q => console.log(`- ${q.properties.mag} magnitude at ${q.properties.place}`));
 
     // Get users with notifications enabled
     const usersSnapshot = await db.collection('user')
@@ -75,6 +80,8 @@ async function checkEarthquakes() {
       return;
     }
 
+    console.log(`Found ${usersSnapshot.docs.length} users with notifications enabled`);
+    
     const transporter = nodemailer.createTransport({
       service: 'gmail',
       auth: {
@@ -82,21 +89,51 @@ async function checkEarthquakes() {
         pass: process.env.GMAIL_APP_PASSWORD
       }
     });
-
+  // Enhanced location matching function
+    const isLocationMatch = (quakePlace, userLocation) => {
+      const normalize = (str) => str.toLowerCase()
+        .replace(/[’']/g, "'")       // Normalize apostrophes
+        .replace(/[^a-z0-9\s]/g, '') // Remove special chars
+        .trim();
+      
+      const normQuake = normalize(quakePlace);
+      const normUser = normalize(userLocation);
+      
+      // Check if either contains the other
+      return normQuake.includes(normUser) || normUser.includes(normQuake);
+    };
     for (const doc of usersSnapshot.docs) {
       const userData = doc.data();
       if (!userData) continue;
       
-      const { email, location, minMagnitude = 4 } = userData;
+      const { email, location, minMagnitude = 1
+        
+       } = userData;
       if (!email || !location) continue;
 
-      const relevantQuakes = quakes.filter(quake => 
-        quake.properties.mag >= minMagnitude && 
-        quake.properties.place.toLowerCase().includes(location.toLowerCase())
-      );
+      console.log(`Checking user ${email} in ${location} (min mag: ${minMagnitude})`);
+      
+       const relevantQuakes = quakes.filter(quake => {
+        const magnitudeMatch = quake.properties.mag >= minMagnitude;
+        const locationMatch = isLocationMatch(quake.properties.place, location);
+        
+        if (magnitudeMatch && locationMatch) {
+          console.log(`MATCH: ${quake.properties.mag} magnitude at ${quake.properties.place}`);
+          console.log(`  (User location: "${location}" found in quake location)`);
+          return true;
+        }
+        
+        if (magnitudeMatch && !locationMatch) {
+          console.log(`NO LOCATION MATCH: ${quake.properties.mag} at ${quake.properties.place}`);
+          console.log(`  (User location: "${location}" not found)`);
+        }
+        
+        return false;
+      });
 
       if (relevantQuakes.length > 0) {
         try {
+          console.log(`Sending alert for ${relevantQuakes.length} quakes to ${email}`);
           await transporter.sendMail({
             from: '"Crisis Companion" <crisiscompanion2025@gmail.com>',
             to: email,
@@ -107,15 +144,15 @@ async function checkEarthquakes() {
         } catch (emailError) {
           console.error(`Failed to send email to ${email}:`, emailError.message);
         }
+      } else {
+        console.log(`No matching quakes for user ${email}`);
       }
     }
   } catch (error) {
     console.error('Error in checkEarthquakes:', error.message);
-    // Rethrow to ensure the error is visible in GitHub Actions
     throw error;
   }
 }
-
 function generateEmail(quakes) {
   return `
     <div style="font-family: Arial, sans-serif;">
@@ -124,7 +161,17 @@ function generateEmail(quakes) {
         <div style="margin-bottom: 15px; padding: 10px; border-left: 3px solid #ff9800;">
           <strong>Magnitude ${quake.properties.mag}</strong><br>
           Location: ${quake.properties.place}<br>
-          Time: ${new Date(quake.properties.time).toUTCString()}
+         Time (MMT): ${new Date(quake.properties.time).toLocaleString('en-US', {
+  timeZone: 'Asia/Yangon',
+  year: 'numeric',
+  month: 'short',
+  day: 'numeric',
+  hour: '2-digit',
+  minute: '2-digit',
+  second: '2-digit',
+  hour12: true,
+})}
+
         </div>
       `).join('')}
       <p><small>To unsubscribe, update your settings in the app.</small></p>

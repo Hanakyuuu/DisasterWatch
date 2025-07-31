@@ -102,8 +102,8 @@ export default function SignupPage() {
         gender,
         dob,
         location,
-         notificationEnabled: true, // Default to true
-  minMagnitude: 4, 
+         notificationEnabled: false, // Default to true
+  minMagnitude: 1, 
         createdAt: new Date()
       });
       setShowSuccessAlert(true);
