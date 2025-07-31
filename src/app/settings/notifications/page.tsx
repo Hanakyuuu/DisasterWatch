@@ -105,9 +105,12 @@ const handleMagnitudeChange = async (value: string) => {
                 <SelectValue placeholder="Select magnitude" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="4">4.0+ (Light)</SelectItem>
-                <SelectItem value="5">5.0+ (Moderate)</SelectItem>
-                <SelectItem value="6">6.0+ (Strong)</SelectItem>
+                <SelectItem value="1">1.0+ (Very Minor)</SelectItem>
+                <SelectItem value="2">2.0+ (Minor)</SelectItem>
+                <SelectItem value="3">3.0+ (Light)</SelectItem>
+                <SelectItem value="4">4.0+ (Moderate)</SelectItem>
+                <SelectItem value="5">5.0+ (Strong)</SelectItem>
+                <SelectItem value="6">6.0+ (Very Strong)</SelectItem>
               </SelectContent>
             </Select>
           </div>

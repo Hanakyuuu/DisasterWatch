@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
-import { auth, firestore } from '@/services/firebase';
+import { auth, firestore } from '@/lib/firebase';
 import { collection, addDoc } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -102,7 +102,7 @@ export default function SignupPage() {
         gender,
         dob,
         location,
-         notificationEnabled: false, // Default to true
+        notificationEnabled: false, // Default to true
   minMagnitude: 1, 
         createdAt: new Date()
       });

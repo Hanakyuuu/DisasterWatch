@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { getFirestore, collection, onSnapshot } from 'firebase/firestore';
-import { app } from '@/services/firebase';
+import { app } from '@/lib/firebase';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -28,37 +28,62 @@ export default function UserManagement() {
   const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    const usersCollection = collection(db, 'user');
-    const unsubscribe = onSnapshot(usersCollection, (snapshot) => {
-      const userList: UserInfo[] = [];
-      const seenEmails = new Set(); // Track unique emails
-      
-      snapshot.forEach((doc) => {
-        const data = doc.data();
-        const email = data.email || doc.id;
-        
-        // Only add user if email hasn't been seen before
-        if (!seenEmails.has(email)) {
-          seenEmails.add(email);
-          userList.push({
-            uid: doc.id,
-            email,
-            name: data.fullName || data.name,
-            phone: data.phone,
-            gender: data.gender,
-            address: data.address || data.location,
-            dob: data.dob,
-            role: data.role || 'user',
-            createdAt: data.createdAt
-          });
-        }
-      });
-      setUsers(userList);
+ useEffect(() => {
+  const usersCollection = collection(db, 'user');
+
+  const unsubscribe = onSnapshot(usersCollection, (snapshot) => {
+    const userMap = new Map<string, UserInfo>();
+
+    snapshot.forEach((doc) => {
+      const data = doc.data();
+
+      // Extract and normalize
+      const email = (data.email || '').trim();
+      const name = (data.fullName || data.name || '').trim();
+      const phone = (data.phone || '').trim();
+      const gender = (data.gender || '').trim().toLowerCase();
+      const address = (data.address || data.location || '').trim();
+      const dob = (data.dob || '').trim();
+      const role = (data.role || '').trim().toLowerCase();
+
+      // Define what counts as invalid/unknown
+      const isInvalid = (value: string) =>
+        value === '' || value === '—' || value.toLowerCase() === 'unknown';
+
+      // Skip if any required field is invalid or role is admin
+      if (
+        isInvalid(email) ||
+        isInvalid(name) ||
+        isInvalid(phone) ||
+        isInvalid(gender) ||
+        isInvalid(address) ||
+        isInvalid(dob) ||
+        role === 'admin'
+      ) {
+        return;
+      }
+
+      // Use email as key to remove duplicates
+      if (!userMap.has(email)) {
+        userMap.set(email, {
+          uid: doc.id,
+          email,
+          name,
+          phone,
+          gender,
+          address,
+          dob,
+          role,
+          createdAt: data.createdAt || '—',
+        });
+      }
     });
 
-    return () => unsubscribe();
-  }, [db]);
+    setUsers(Array.from(userMap.values()));
+  });
+
+  return () => unsubscribe();
+}, []);
 
   const filteredUsers = users.filter(user => {
     if (user.role === 'admin') return false;
