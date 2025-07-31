@@ -3,20 +3,57 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { db } from '../DisasterWatch/src/lib/firebase-admin.js';
 import nodemailer from 'nodemailer';
+import fs from 'fs';
 
-dotenv.config({ path: '.env.local' });  // Load .env.local instead of .env
-// ... rest of your imports
+// Get current directory
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
+// Try multiple possible env file locations
+const envPaths = [
+  path.join(__dirname, '..', '.env.local'),
+  path.join(__dirname, '..', '.env'),
+  path.join(process.cwd(), '.env.local'),
+  path.join(process.cwd(), '.env')
+];
 
+// Find the first existing env file
+const envPath = envPaths.find(p => fs.existsSync(p));
 
+if (!envPath) {
+  console.error('No environment file found. Tried:', envPaths);
+  process.exit(1);
+}
+
+console.log('Using environment file:', envPath);
+dotenv.config({ path: envPath });
+
+// Verify environment variables
+console.log('Environment variables:', {
+  FIREBASE_PROJECT_ID: process.env.FIREBASE_PROJECT_ID ? '✔️' : '❌',
+  FIREBASE_CLIENT_EMAIL: process.env.FIREBASE_CLIENT_EMAIL ? '✔️' : '❌',
+  FIREBASE_PRIVATE_KEY: process.env.FIREBASE_PRIVATE_KEY ? '✔️' : '❌',
+  GMAIL_APP_PASSWORD: process.env.GMAIL_APP_PASSWORD ? '✔️' : '❌'
+});
+
+// Rest of your code...
 async function checkEarthquakes() {
   try {
-    console.log('Environment:', {
-  projectId: !!process.env.FIREBASE_PROJECT_ID,
-  clientEmail: !!process.env.FIREBASE_CLIENT_EMAIL,
-  privateKey: !!process.env.FIREBASE_PRIVATE_KEY
+// DEBUG: Show current directory and env file loading
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+console.log('Running from:', __dirname);
+
+// Load environment
+const envPath = new URL('../.env.local', import.meta.url).pathname;
+// For Windows, remove leading slash if needed
+const normalizedPath = envPath.startsWith('/') ? envPath.slice(1) : envPath; 
+dotenv.config({ path: normalizedPath });
+// DEBUG: Show loaded values
+console.log({
+  projectId: process.env.FIREBASE_PROJECT_ID?.substring(0, 3) + '...',
+  clientEmail: process.env.FIREBASE_CLIENT_EMAIL?.substring(0, 3) + '...',
+  privateKey: process.env.FIREBASE_PRIVATE_KEY?.substring(0, 10) + '...'
 });
+
     console.log('Checking earthquakes at', new Date().toISOString());
     
     // Get quakes from last 15 mins
