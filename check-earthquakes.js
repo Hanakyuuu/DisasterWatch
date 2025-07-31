@@ -1,12 +1,15 @@
 import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+dotenv.config({ path: path.join(__dirname, '..', '.env.local') });
+
 import { db } from '../DisasterWatch/src/lib/firebase-admin.js';
 import nodemailer from 'nodemailer';
 import fs from 'fs';
 
 // Get current directory
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
 
 // Debug directory structure
 console.log('Current directory:', __dirname);
@@ -32,17 +35,15 @@ if (process.env.CI !== 'true') {
 }
 
 // Verify environment variables
-console.log('Environment variables:', {
-  FIREBASE_PROJECT_ID: process.env.FIREBASE_PROJECT_ID ? '✔️' : '❌',
-  FIREBASE_CLIENT_EMAIL: process.env.FIREBASE_CLIENT_EMAIL ? '✔️' : '❌',
-  FIREBASE_PRIVATE_KEY: process.env.FIREBASE_PRIVATE_KEY ? '✔️' : '❌',
-  GMAIL_APP_PASSWORD: process.env.GMAIL_APP_PASSWORD ? '✔️' : '❌'
+console.log('Loaded Firebase credentials:', {
+  projectId: process.env.FIREBASE_PROJECT_ID,
+  clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+  privateKeyPresent: !!process.env.FIREBASE_PRIVATE_KEY
 });
 
 // Ensure private key has proper newline characters
-if (process.env.FIREBASE_PRIVATE_KEY) {
-  process.env.FIREBASE_PRIVATE_KEY = process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n');
-}
+privateKey: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n')
+
 
 async function checkEarthquakes() {
   try {
