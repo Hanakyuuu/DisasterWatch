@@ -1,9 +1,11 @@
-import 'dotenv/config';
+import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { db } from '../DisasterWatch/src/lib/firebase-admin.js';
 import nodemailer from 'nodemailer';
 
+dotenv.config({ path: '.env.local' });  // Load .env.local instead of .env
+// ... rest of your imports
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 
