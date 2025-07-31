@@ -1,9 +1,11 @@
 import { initializeApp, cert } from 'firebase-admin/app';
 import { getFirestore } from 'firebase-admin/firestore';
+
+
 import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { db } from './src/lib/firebase-admin.js';  // Update this import path
+
 // ... rest of your imports ...
 
 // Remove the duplicate __dirname and env loading (keep only one at the top)
