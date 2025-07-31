@@ -8,24 +8,28 @@ import fs from 'fs';
 // Get current directory
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-// Try multiple possible env file locations
-const envPaths = [
-  path.join(__dirname, '..', '.env.local'),
-  path.join(__dirname, '..', '.env'),
-  path.join(process.cwd(), '.env.local'),
-  path.join(process.cwd(), '.env')
-];
+// Debug directory structure
+console.log('Current directory:', __dirname);
+console.log('Directory contents:', fs.readdirSync(__dirname));
 
-// Find the first existing env file
-const envPath = envPaths.find(p => fs.existsSync(p));
+// In GitHub Actions, we won't have .env files - use environment variables directly
+if (process.env.CI !== 'true') {
+  // Try multiple possible env file locations for local development
+  const envPaths = [
+    path.join(__dirname, '..', '.env.local'),
+    path.join(__dirname, '..', '.env'),
+    path.join(process.cwd(), '.env.local'),
+    path.join(process.cwd(), '.env')
+  ];
 
-if (!envPath) {
-  console.error('No environment file found. Tried:', envPaths);
-  process.exit(1);
+  // Find the first existing env file
+  const envPath = envPaths.find(p => fs.existsSync(p));
+
+  if (envPath) {
+    console.log('Using environment file:', envPath);
+    dotenv.config({ path: envPath });
+  }
 }
-
-console.log('Using environment file:', envPath);
-dotenv.config({ path: envPath });
 
 // Verify environment variables
 console.log('Environment variables:', {
@@ -35,25 +39,13 @@ console.log('Environment variables:', {
   GMAIL_APP_PASSWORD: process.env.GMAIL_APP_PASSWORD ? '✔️' : '❌'
 });
 
-// Rest of your code...
+// Ensure private key has proper newline characters
+if (process.env.FIREBASE_PRIVATE_KEY) {
+  process.env.FIREBASE_PRIVATE_KEY = process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n');
+}
+
 async function checkEarthquakes() {
   try {
-// DEBUG: Show current directory and env file loading
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-console.log('Running from:', __dirname);
-
-// Load environment
-const envPath = new URL('../.env.local', import.meta.url).pathname;
-// For Windows, remove leading slash if needed
-const normalizedPath = envPath.startsWith('/') ? envPath.slice(1) : envPath; 
-dotenv.config({ path: normalizedPath });
-// DEBUG: Show loaded values
-console.log({
-  projectId: process.env.FIREBASE_PROJECT_ID?.substring(0, 3) + '...',
-  clientEmail: process.env.FIREBASE_CLIENT_EMAIL?.substring(0, 3) + '...',
-  privateKey: process.env.FIREBASE_PRIVATE_KEY?.substring(0, 10) + '...'
-});
-
     console.log('Checking earthquakes at', new Date().toISOString());
     
     // Get quakes from last 15 mins
@@ -62,12 +54,25 @@ console.log({
     const url = `https://earthquake.usgs.gov/fdsnws/event/1/query?format=geojson&starttime=${past.toISOString()}&endtime=${now.toISOString()}&minmagnitude=3`;
     
     const response = await fetch(url);
-    const { features: quakes } = await response.json();
+    if (!response.ok) {
+      throw new Error(`Failed to fetch earthquakes: ${response.status} ${response.statusText}`);
+    }
+    
+    const data = await response.json();
+    if (!data || !data.features) {
+      throw new Error('Invalid earthquake data received');
+    }
+    const quakes = data.features;
 
     // Get users with notifications enabled
     const usersSnapshot = await db.collection('user')
       .where('notificationEnabled', '==', true)
       .get();
+
+    if (!usersSnapshot || !usersSnapshot.docs) {
+      console.log('No users with notifications enabled found');
+      return;
+    }
 
     const transporter = nodemailer.createTransport({
       service: 'gmail',
@@ -78,7 +83,10 @@ console.log({
     });
 
     for (const doc of usersSnapshot.docs) {
-      const { email, location, minMagnitude = 4 } = doc.data();
+      const userData = doc.data();
+      if (!userData) continue;
+      
+      const { email, location, minMagnitude = 4 } = userData;
       if (!email || !location) continue;
 
       const relevantQuakes = quakes.filter(quake => 
@@ -87,17 +95,23 @@ console.log({
       );
 
       if (relevantQuakes.length > 0) {
-        await transporter.sendMail({
-          from: '"Crisis Companion" <crisiscompanion2025@gmail.com>',
-          to: email,
-          subject: `⚠️ ${relevantQuakes.length} New Earthquake(s) Near ${location}`,
-          html: generateEmail(relevantQuakes)
-        });
-        console.log(`Alert sent to ${email}`);
+        try {
+          await transporter.sendMail({
+            from: '"Crisis Companion" <crisiscompanion2025@gmail.com>',
+            to: email,
+            subject: `⚠️ ${relevantQuakes.length} New Earthquake(s) Near ${location}`,
+            html: generateEmail(relevantQuakes)
+          });
+          console.log(`Alert sent to ${email}`);
+        } catch (emailError) {
+          console.error(`Failed to send email to ${email}:`, emailError.message);
+        }
       }
     }
   } catch (error) {
-    console.error('Error:', error.message);
+    console.error('Error in checkEarthquakes:', error.message);
+    // Rethrow to ensure the error is visible in GitHub Actions
+    throw error;
   }
 }
 
@@ -117,5 +131,8 @@ function generateEmail(quakes) {
   `;
 }
 
-// Execute
-checkEarthquakes();
+// Execute with error handling
+checkEarthquakes().catch(error => {
+  console.error('Unhandled error in main execution:', error);
+  process.exit(1);
+});
